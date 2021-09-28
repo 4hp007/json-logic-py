@@ -98,7 +98,10 @@ def merge(*args):
     return ret
 
 
-def get_var(data, var_name, not_found=None):
+def get_var(data, var_name=None, not_found=None):
+    if var_name == '' or var_name is None:
+        return data
+
     """Gets variable value from data dictionary."""
     try:
         for key in str(var_name).split('.'):
@@ -139,6 +142,82 @@ def missing_some(data, min_required, args):
             if found >= min_required:
                 return []
     return ret
+
+
+def reduce_(data, *values):
+    if len(values) < 3:
+        return data
+    scoped_data = jsonLogic(values[0], data)
+    scoped_logic = values[1]
+    initial = values[2]
+    if not isinstance(scoped_data, list):
+        scoped_data = []
+
+    return reduce(
+        lambda accumulator, current: jsonLogic(scoped_logic, {"current": current, "accumulator": accumulator}),
+        scoped_data,
+        initial)
+
+
+def filter_(data, *values):
+    if len(values) < 2:
+        return data
+    scoped_data = jsonLogic(values[0], data)
+    scoped_logic = values[1]
+    if not isinstance(scoped_data, list):
+        scoped_data = []
+
+    return list(filter(
+        lambda a: bool(jsonLogic(scoped_logic, a)),
+        scoped_data))
+
+
+def map_(data, *values):
+    if len(values) < 2:
+        return data
+    scoped_data = jsonLogic(values[0], data)
+    scoped_logic = values[1]
+    if not isinstance(scoped_data, list):
+        scoped_data = []
+
+    return list(map(
+        lambda a: jsonLogic(scoped_logic, a),
+        scoped_data))
+
+
+def all_(data, *values):
+    if len(values) < 2:
+        return data
+    scoped_data = jsonLogic(values[0], data)
+    scoped_logic = values[1]
+    if not isinstance(scoped_data, list):
+        return False
+
+    if len(scoped_data) == 0:
+        return False
+    return all(jsonLogic(scoped_logic, a) for a in scoped_data)
+
+
+def some_(data, *values):
+    if len(values) < 2:
+        return data
+    scoped_data = jsonLogic(values[0], data)
+    scoped_logic = values[1]
+    if not isinstance(scoped_data, list):
+        scoped_data = []
+
+    return any(jsonLogic(scoped_logic, a) for a in scoped_data)
+
+
+def none_(data, *values):
+    if len(values) < 2:
+        return data
+    scoped_data = jsonLogic(values[0], data)
+    scoped_logic = values[1]
+    if not isinstance(scoped_data, list):
+        scoped_data = []
+
+    return not any(jsonLogic(scoped_logic, a) for a in scoped_data)
 
 
 operations = {
@@ -186,6 +265,20 @@ def jsonLogic(tests, data=None):
     # {"var": ["x"]}
     if not isinstance(values, list) and not isinstance(values, tuple):
         values = [values]
+
+    # map, reduce and filter needs to be applied on scoped data and thus before recursion.
+    if operator == 'map':
+        return map_(data, *values)
+    if operator == 'filter':
+        return filter_(data, *values)
+    if operator == 'reduce':
+        return reduce_(data, *values)
+    if operator == 'all':
+        return all_(data, *values)
+    if operator == 'some':
+        return some_(data, *values)
+    if operator == 'none':
+        return none_(data, *values)
 
     # Recursion!
     values = [jsonLogic(val, data) for val in values]

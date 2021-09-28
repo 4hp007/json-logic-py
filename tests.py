@@ -364,6 +364,30 @@ class JSONLogicTest(unittest.TestCase):
         """
         self.assertEqual(jsonLogic({"log": "apple"}), "apple")
 
+    def test_filter(self):
+        self.assertEqual(
+            jsonLogic({"filter": [{"var": "integers"}, {"%": [{"var": ""}, 2]}]}, {"integers": [1, 2, 3, 4, 5]}),
+            [1, 3, 5])
+        self.assertEqual(
+            jsonLogic({"filter": [{"var": "integers"}]}, {"integers": [1, 2, 3, 4, 5]}),
+            {"integers": [1, 2, 3, 4, 5]})
+
+    def test_map(self):
+        self.assertEqual(
+            jsonLogic({"map": [{"var": "integers"}, {"*": [{"var": ""}, 2]}]}, {"integers": [1, 2, 3, 4, 5]}),
+            [2, 4, 6, 8, 10])
+        self.assertEqual(
+            jsonLogic({"map": [{"var": "integers"}]}, {"integers": [1, 2, 3, 4, 5]}),
+            {"integers": [1, 2, 3, 4, 5]})
+
+    def test_reduce(self):
+        self.assertEqual(
+            jsonLogic({"reduce": [{"var": "integers"}, {"+": [{"var": "current"}, {"var": "accumulator"}]}, 0]},
+                      {"integers": [1, 2, 3, 4, 5]}), 15)
+        self.assertEqual(
+            jsonLogic({"reduce": [{"var": "integers"}]}, {"integers": [1, 2, 3, 4, 5]}),
+            {"integers": [1, 2, 3, 4, 5]})
+
 
 class SharedTests(unittest.TestCase):
     """This runs the tests from http://jsonlogic.com/tests.json."""
